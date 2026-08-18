@@ -1,14 +1,22 @@
 import os
+
 from flask import Flask
 from werkzeug.security import generate_password_hash
 from Application.database import db
 from Application.models import User
 
 
+def normalize_database_url(value: str) -> str:
+    value = (value or "sqlite:///ecard.sqlite").strip()
+    if value.startswith("postgres://"):
+        value = "postgresql://" + value[len("postgres://"):]
+    return value
+
+
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///ecard.sqlite").replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(os.environ.get("DATABASE_URL"))
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
     app.debug = False
@@ -16,12 +24,13 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        admin_username = os.environ.get("ADMIN_USERNAME")
-        admin_password = os.environ.get("ADMIN_PASSWORD")
+        admin_username = os.environ.get("ADMIN_USERNAME", "").strip()
+        admin_password = os.environ.get("ADMIN_PASSWORD", "")
+        admin_email = os.environ.get("ADMIN_EMAIL", "admin@local").strip().lower()
         if admin_username and admin_password and not User.query.filter_by(type="admin").first():
             db.session.add(User(
                 username=admin_username,
-                email=os.environ.get("ADMIN_EMAIL", "admin@local"),
+                email=admin_email,
                 password=generate_password_hash(admin_password),
                 type="admin",
             ))
