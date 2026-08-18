@@ -1,0 +1,116 @@
+name: Import and prepare E-Card Generator
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import upstream source
+        run: |
+          if [ -f .upstream-imported ]; then
+            echo 'Already imported; nothing to do.'
+            exit 0
+          fi
+
+          git clone --depth 1 https://github.com/Aayush-kotwani/E-Card-Generator.git /tmp/upstream
+          rsync -a --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance/ecard.sqlite' /tmp/upstream/ ./
+
+          rm -rf Application/__pycache__ __pycache__
+          mkdir -p instance
+          touch instance/.gitkeep
+
+      - name: Add production configuration
+        run: |
+          cat > requirements.txt <<'EOF'
+          Flask>=3.0,<4
+          Flask-SQLAlchemy>=3.1,<4
+          gunicorn>=22,<24
+          matplotlib>=3.8,<4
+          Werkzeug>=3.0,<4
+          EOF
+
+          cat > Procfile <<'EOF'
+          web: gunicorn --bind 0.0.0.0:$PORT app:app
+          EOF
+
+          cat > runtime.txt <<'EOF'
+          python-3.11.9
+          EOF
+
+          cat > .gitignore <<'EOF'
+          __pycache__/
+          *.py[cod]
+          .venv/
+          venv/
+          .env
+          .env.*
+          instance/*.sqlite
+          instance/*.db
+          uploads/
+          .pytest_cache/
+          EOF
+
+          cat > .env.example <<'EOF'
+          SECRET_KEY=replace-with-a-long-random-secret
+          DATABASE_URL=sqlite:///ecard.sqlite
+          EOF
+
+          cat > render.yaml <<'EOF'
+          services:
+            - type: web
+              name: e-card-generator
+              runtime: python
+              buildCommand: pip install -r requirements.txt
+              startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+              envVars:
+                - key: SECRET_KEY
+                  generateValue: true
+                - key: DATABASE_URL
+                  value: sqlite:///ecard.sqlite
+          EOF
+
+          touch .upstream-imported
+
+      - name: Make Flask production-safe
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app.py')
+          s = p.read_text()
+          s = s.replace('app.debug=True', 'app.debug=False')
+          s = s.replace('app=Flask(__name__)', 'app=Flask(__name__)\n    app.config["SECRET_KEY"] = __import__("os").environ.get("SECRET_KEY", "dev-only-change-me")')
+          s = s.replace('app.config["SQLALCHEMY_DATABASE_URI"]="sqlite:///ecard.sqlite"', 'app.config["SQLALCHEMY_DATABASE_URI"] = __import__("os").environ.get("DATABASE_URL", "sqlite:///ecard.sqlite")\n    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgres://"):\n        app.config["SQLALCHEMY_DATABASE_URI"] = app.config["SQLALCHEMY_DATABASE_URI"].replace("postgres://", "postgresql://", 1)')
+          p.write_text(s)
+          PY
+
+      - name: Update README deployment instructions
+        run: |
+          cat >> README.md <<'EOF'
+
+          ## Deployment
+
+          This copy is prepared for production deployment with Gunicorn. Set `SECRET_KEY` to a strong random value and configure `DATABASE_URL` in your hosting provider. Render can deploy this repository using the included `render.yaml`.
+
+          **Important:** This application is a document-card workflow/demo. It does not connect to UIDAI, PAN, Parivahan, or Election Commission databases and must not be presented as an official government portal.
+          EOF
+
+      - name: Commit prepared application
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Import upstream app and prepare for deployment' || exit 0
+          git push origin main
