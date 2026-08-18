@@ -5,9 +5,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .models import User, Info
 from .database import db
 from key_generator import aadhar_key, pan_key, driving_key, voter_key
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 
 def current_user():
