@@ -81,3 +81,9 @@ This copy is prepared for production deployment with Gunicorn. Set `SECRET_KEY` 
 This copy is prepared for production deployment with Gunicorn. Set `SECRET_KEY` to a strong random value and configure `DATABASE_URL` in your hosting provider. Render can deploy this repository using the included `render.yaml`.
 
 **Important:** This application is a document-card workflow/demo. It does not connect to UIDAI, PAN, Parivahan, or Election Commission databases and must not be presented as an official government portal.
+
+## Deployment
+
+This copy is prepared for production deployment with Gunicorn. Set `SECRET_KEY` to a strong random value and configure `DATABASE_URL` in your hosting provider. Render can deploy this repository using the included `render.yaml`.
+
+**Important:** This application is a document-card workflow/demo. It does not connect to UIDAI, PAN, Parivahan, or Election Commission databases and must not be presented as an official government portal.
