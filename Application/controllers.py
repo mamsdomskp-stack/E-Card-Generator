@@ -167,7 +167,7 @@ def generate(card, user_id):
     return redirect(url_for("admin_dash"))
 
 
-@app.route("/view/<card>/<user_id>")
+@app.route("/view/<card>/<int:user_id>")
 @login_required
 def view_card(card, user_id):
     owner_or_admin(int(user_id))
