@@ -7,7 +7,10 @@ from Application.models import User
 
 
 def normalize_database_url(value: str) -> str:
-    value = (value or "sqlite:///ecard.sqlite").strip()
+    # Vercel's filesystem is ephemeral/read-only outside /tmp. PostgreSQL is
+    # recommended for production; /tmp keeps a deployment bootable when a DB
+    # variable has not yet been configured.
+    value = (value or "sqlite:////tmp/ecard.sqlite").strip()
     if value.startswith("postgres://"):
         value = "postgresql://" + value[len("postgres://"):]
     return value
