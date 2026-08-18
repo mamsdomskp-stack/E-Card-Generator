@@ -6,6 +6,7 @@ def create_app():
     # global app
     app=Flask(__name__)
     app.config["SECRET_KEY"] = __import__("os").environ.get("SECRET_KEY", "dev-only-change-me")
+    app.config["SECRET_KEY"] = __import__("os").environ.get("SECRET_KEY", "dev-only-change-me")
     app.debug=False
     app.config["SQLALCHEMY_DATABASE_URI"] = __import__("os").environ.get("DATABASE_URL", "sqlite:///ecard.sqlite")
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgres://"):
